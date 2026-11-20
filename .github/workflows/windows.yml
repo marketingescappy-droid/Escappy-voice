@@ -1,0 +1,41 @@
+name: Validación en Windows
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Instalar dependencias
+        run: python -m pip install -r requirements-dev.txt
+      - name: Probar almacenamiento e interfaz
+        run: python -m pytest -q
+      - name: Comprobar el arranque de Streamlit
+        shell: pwsh
+        run: |
+          $server = Start-Process python -ArgumentList '-m','streamlit','run','app.py','--server.headless=true','--server.port=8511' -PassThru
+          try {
+            for ($attempt = 0; $attempt -lt 30; $attempt++) {
+              if ($server.HasExited) { throw "Streamlit terminó antes de responder." }
+              try {
+                $health = Invoke-RestMethod 'http://127.0.0.1:8511/_stcore/health' -TimeoutSec 2
+                if ($health -eq 'ok') { return }
+              } catch [System.Net.Http.HttpRequestException] {}
+              Start-Sleep -Seconds 1
+            }
+            throw "Streamlit no respondió a tiempo."
+          } finally {
+            if (-not $server.HasExited) { Stop-Process -Id $server.Id }
+          }
