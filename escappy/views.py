@@ -126,7 +126,7 @@ def conversations(store: Storage):
 
     selected = st.selectbox(
         "Historial de conversaciones", list(threads), key="conversation",
-        format_func=lambda thread_id: threads[thread_id],
+        format_func=lambda thread_id: f"{threads[thread_id]} (n.º {thread_id})",
     )
     st.caption("Las respuestas de IA estarán disponibles cuando se conecte un proveedor.")
     for message in store.messages(selected):

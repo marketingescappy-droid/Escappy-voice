@@ -35,9 +35,10 @@ def test_conversations_memory_and_integrations(monkeypatch, tmp_path):
     app.text_input[0].set_value("Campaña de otoño")
     app.button[0].click().run()
     app.chat_input[0].set_value("Ideas para un carrusel").run()
-    app.text_input[0].set_value("Nueva campaña")
+    app.text_input[0].set_value("Campaña de otoño")
     app.button[0].click().run()
     assert not app.exception
+    assert len(set(app.selectbox[0].options)) == 2
     assert app.selectbox[0].value == 2
     assert len(app.chat_message) == 0
 
