@@ -25,5 +25,4 @@ PLANNED_INTEGRATIONS = {
     "Google Drive": "Archivos y materiales de referencia.",
     "ClickUp": "Seguimiento de tareas editoriales.",
     "Higgsfield": "Flujo de producción audiovisual.",
-    "Proveedor de IA": "Respuestas con el historial y la memoria creativa.",
 }

@@ -54,7 +54,7 @@ def test_conversations_memory_and_integrations(monkeypatch, tmp_path):
     assert reopened.text[0].value == "Usar un tono cercano"
 
     reopened.sidebar.radio[0].set_value("Integraciones").run()
-    assert {"Canva", "Google Drive", "ClickUp", "Higgsfield", "Proveedor de IA"} == {
+    assert {"Canva", "Google Drive", "ClickUp", "Higgsfield", "OpenAI"} == {
         heading.value for heading in reopened.subheader
     }
     assert not reopened.exception

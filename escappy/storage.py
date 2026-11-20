@@ -102,6 +102,24 @@ class Storage:
                 (conversation_id, role, required(content, "Mensaje")),
             )
 
+    def save_reply(self, conversation_id: int, last_user_id: int, content: str) -> bool:
+        """Append only if the exact user message is still the end of the thread."""
+        with self.connect() as connection:
+            result = connection.execute(
+                """
+                INSERT INTO messages(conversation_id, role, content)
+                SELECT ?, 'assistant', ?
+                WHERE EXISTS (
+                    SELECT 1 FROM (
+                        SELECT id, role FROM messages
+                        WHERE conversation_id=? ORDER BY id DESC LIMIT 1
+                    ) AS latest WHERE latest.id=? AND latest.role='user'
+                )
+                """,
+                (conversation_id, required(content, "Respuesta"), conversation_id, last_user_id),
+            )
+            return result.rowcount == 1
+
     def messages(self, conversation_id: int):
         with self.connect() as connection:
             return connection.execute(

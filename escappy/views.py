@@ -5,7 +5,9 @@ from html import escape
 
 import streamlit as st
 
-from escappy.integrations import PLANNED_INTEGRATIONS
+from escappy.chat import ChatError, OpenAIChatProvider
+from escappy.config import openai_settings
+from escappy.integrations import PLANNED_INTEGRATIONS, ChatMessage, CreativeNote
 from escappy.storage import FORMATS, MEMORY_TYPES, STATUSES, Storage
 
 MONTHS = (
@@ -128,11 +130,30 @@ def conversations(store: Storage):
         "Historial de conversaciones", list(threads), key="conversation",
         format_func=lambda thread_id: f"{threads[thread_id]} (n.º {thread_id})",
     )
-    st.caption("Las respuestas de IA estarán disponibles cuando se conecte un proveedor.")
-    for message in store.messages(selected):
+    settings = openai_settings()
+    if settings.api_key:
+        st.caption("Al pedir una respuesta se envían a OpenAI este historial y la memoria creativa.")
+    else:
+        st.caption("Puedes guardar mensajes. Para pedir una respuesta, configura la clave indicada en Integraciones.")
+    messages = store.messages(selected)
+    for message in messages:
         with st.chat_message(message["role"]):
             st.text(message["content"])
             st.caption(f"{message['created_at']} UTC")
+    if settings.api_key and messages and messages[-1]["role"] == "user":
+        last_id = messages[-1]["id"]
+        if st.button("Pedir respuesta a OpenAI", key=f"reply-{selected}-{last_id}"):
+            history = [ChatMessage(row["role"], row["content"]) for row in messages]
+            notes = [CreativeNote(row["kind"], row["content"]) for row in store.memory()]
+            try:
+                with st.spinner("Preparando respuesta…"):
+                    reply = OpenAIChatProvider(settings).reply(history, notes)
+            except ChatError as error:
+                st.error(str(error))
+            else:
+                if not store.save_reply(selected, last_id, reply):
+                    saved("La conversación cambió durante la consulta. Revisa los últimos mensajes.")
+                st.rerun()
     if prompt := st.chat_input("Escribe un mensaje", key=f"chat-{selected}"):
         try:
             store.add_message(selected, prompt)
@@ -172,7 +193,16 @@ def memory(store: Storage):
 
 def integrations(_store: Storage):
     st.title("Integraciones")
-    st.caption("Los conectores están previstos para futuras fases.")
+    settings = openai_settings()
+    with st.container(border=True):
+        st.subheader("OpenAI")
+        if settings.api_key:
+            st.write(f"Modelo configurado · {settings.model}")
+            st.caption("La clave se valida al pedir una respuesta desde Conversaciones.")
+        else:
+            st.write("Pendiente de configurar")
+            st.caption("Guarda tu clave de la API en OPENAI_API_KEY en el archivo local .env.")
+
     for name, description in PLANNED_INTEGRATIONS.items():
         with st.container(border=True):
             st.subheader(name)
